@@ -1,5 +1,6 @@
 const express = require('express');
 const fetch = require('node-fetch');
+const path = require('path');
 const app = express();
 
 const API_KEY = '7de8ef3b5af5d2166dd72a2e956e0026';
@@ -10,10 +11,12 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(express.static(path.join(__dirname, 'public')));
+
 app.get('/api/*', async (req, res) => {
-  const path = req.params[0];
+  const path2 = req.params[0];
   const query = new URLSearchParams(req.query).toString();
-  const url = `${BASE}/${path}${query ? '?' + query : ''}`;
+  const url = `${BASE}/${path2}${query ? '?' + query : ''}`;
   try {
     const r = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
     const data = await r.json();
