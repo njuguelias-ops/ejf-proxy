@@ -3,8 +3,8 @@ const fetch = require('node-fetch');
 const path = require('path');
 const app = express();
 
-const API_KEY = 'cf52dcbf4ce341e08b3de0867e30d12d';
-const BASE = 'https://api.football-data.org/v4';
+const API_KEY = '7de8ef3b5af5d2166dd72a2e956e0026';
+const BASE = 'https://v3.football.api-sports.io';
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -18,7 +18,7 @@ app.get('/api/*', async (req, res) => {
   const query = new URLSearchParams(req.query).toString();
   const url = `${BASE}/${path2}${query ? '?' + query : ''}`;
   try {
-    const r = await fetch(url, { headers: { 'X-Auth-Token': API_KEY } });
+    const r = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
     const data = await r.json();
     res.json(data);
   } catch (e) {
