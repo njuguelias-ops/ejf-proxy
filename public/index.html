@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elite Jackpot</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #111; }
+.topbar { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 14px 20px; display: flex; align-items: center; gap: 10px; }
+.topbar h1 { font-size: 17px; font-weight: 600; }
+.topbar span { font-size: 12px; background: #e8f0fe; color: #1a56db; padding: 2px 8px; border-radius: 99px; }
+.nav { display: flex; background: #fff; border-bottom: 1px solid #e5e5e5; padding: 0 20px; }
+.nav button { background: none; border: none; padding: 12px 16px; font-size: 14px; color: #666; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.nav button.active { color: #1a56db; border-bottom-color: #1a56db; font-weight: 500; }
+.screen { display: none; padding: 20px; max-width: 700px; margin: 0 auto; }
+.screen.active { display: block; }
+h2 { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; border: none; font-family: inherit; }
+.btn-primary { background: #1a56db; color: #fff; }
+.btn-primary:hover { background: #1446b8; }
+.btn-ghost { background: #fff; border: 1px solid #d1d5db; color: #111; }
+.btn-ghost:hover { background: #f9f9f9; }
+.btn-sm { padding: 5px 10px; font-size: 13px; }
+.btn-danger { background: #fff; border: 1px solid #fca5a5; color: #dc2626; }
+.btn-danger:hover { background: #fef2f2; }
+input, select { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff; }
+input:focus, select:focus { outline: none; border-color: #1a56db; box-shadow: 0 0 0 3px rgba(26,86,219,0.1); }
+.label { font-size: 13px; color: #555; margin-bottom: 4px; }
+.card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+.card:hover { border-color: #1a56db; box-shadow: 0 0 0 3px rgba(26,86,219,0.07); }
+.card.selected { border-color: #1a56db; box-shadow: 0 0 0 3px rgba(26,86,219,0.12); }
+.card-static { cursor: default; }
+.card-static:hover { border-color: #e5e5e5; box-shadow: none; }
+.teams { font-size: 15px; font-weight: 600; }
+.meta { font-size: 12px; color: #888; margin-top: 3px; }
+.badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #e8f0fe; color: #1a56db; }
+.badge-green { background: #dcfce7; color: #16a34a; }
+.badge-gray { background: #f3f4f6; color: #555; }
+.row { display: flex; gap: 8px; align-items: center; }
+.flex { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.between { display: flex; align-items: center; justify-content: space-between; }
+.divider { border: none; border-top: 1px solid #e5e5e5; margin: 16px 0; }
+.empty { text-align: center; padding: 40px 20px; color: #aaa; font-size: 14px; }
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #e5e5e5; border-top-color: #1a56db; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.msg-success { color: #16a34a; font-size: 13px; margin-top: 8px; }
+.msg-error { color: #dc2626; font-size: 13px; margin-top: 8px; }
+.match-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+.match-row:last-child { border-bottom: none; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.pill { font-size: 12px; background: #f3f4f6; border-radius: 99px; padding: 2px 10px; color: #555; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⚡ Elite Jackpot</h1>
+  <span>Intelligence System</span>
+</div>
+
+<div class="nav">
+  <button class="active" onclick="showTab('jackpots', this)">Jackpots</button>
+  <button onclick="showTab('search', this)">Search Fixtures</button>
+</div>
+
+<div class="screen active" id="tab-jackpots">
+  <div class="section-header">
+    <h2>My Jackpots</h2>
+    <button class="btn btn-primary btn-sm" onclick="openCreateJackpot()">+ New Jackpot</button>
+  </div>
+
+  <div id="create-jackpot-form" style="display:none; margin-bottom:14px;">
+    <div class="card card-static">
+      <div class="label" style="margin-bottom:6px;">Jackpot name</div>
+      <input type="text" id="new-jackpot-name" placeholder="e.g. JP-18 Weekend" style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')createJackpot()" />
+      <div class="flex">
+        <button class="btn btn-primary btn-sm" onclick="createJackpot()">Create</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeCreateJackpot()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="jackpot-list"></div>
+
+  <div id="jackpot-detail" style="display:none;">
+    <hr class="divider">
+    <div class="flex" style="margin-bottom:14px;">
+      <button class="btn btn-ghost btn-sm" onclick="closeJackpotDetail()">← Back</button>
+      <h2 id="detail-title" style="margin:0;"></h2>
+      <span class="pill" id="detail-count"></span>
+    </div>
+    <div id="jackpot-matches"></div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="showTab('search', document.querySelectorAll('.nav button')[1])">+ Add Match</button>
+  </div>
+</div>
+
+<div class="screen" id="tab-search">
+  <h2>Find a Fixture</h2>
+  <div style="margin-bottom:12px;">
+    <div class="label">Team name</div>
+    <div class="row">
+      <input type="text" id="search-input" placeholder="e.g. Arsenal, Barcelona, Simba..." onkeydown="if(event.key==='Enter')searchFixtures()" />
+      <button class="btn btn-primary" onclick="searchFixtures()" style="white-space:nowrap;">Search</button>
+    </div>
+  </div>
+  <div style="margin-bottom:16px;">
+    <div class="label">Date (optional — leave blank for next 10 fixtures)</div>
+    <input type="date" id="search-date" style="max-width:200px;" />
+  </div>
+
+  <div id="search-status"></div>
+  <div id="search-results"></div>
+
+  <div id="save-panel" style="display:none; margin-top:16px;">
+    <hr class="divider">
+    <h2>Save to Jackpot</h2>
+    <div id="selected-fixture-info" style="margin-bottom:12px;"></div>
+    <div class="label">Choose jackpot</div>
+    <select id="jackpot-select" style="max-width:320px; margin-bottom:12px;"></select>
+    <div class="flex">
+      <button class="btn btn-primary btn-sm" onclick="saveToJackpot()">Save Match</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeSavePanel()">Cancel</button>
+    </div>
+    <div id="save-msg"></div>
+  </div>
+</div>
+
+<script>
+const PROXY = 'https://ejf-proxy-production.up.railway.app';
+let jackpots = JSON.parse(localStorage.getItem('ejf_jackpots') || '[]');
+let selectedFixture = null;
+
+function save() { localStorage.setItem('ejf_jackpots', JSON.stringify(jackpots)); }
+
+async function apiFetch(path, params) {
+  const q = new URLSearchParams(params).toString();
+  const url = `${PROXY}/api/${path}${q ? '?' + q : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Server error: ' + res.status);
+  const data = await res.json();
+  if (data.errors && Object.keys(data.errors).length) throw new Error(Object.values(data.errors)[0]);
+  return data;
+}
+
+function showTab(tab, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (tab === 'jackpots') renderJackpots();
+  if (tab === 'search') populateJackpotSelect();
+}
+
+function renderJackpots() {
+  const el = document.getElementById('jackpot-list');
+  if (!jackpots.length) {
+    el.innerHTML = '<div class="empty">No jackpots yet.<br>Create your first one above.</div>';
+    return;
+  }
+  el.innerHTML = jackpots.map((j, i) => `
+    <div class="card" onclick="openJackpotDetail(${i})">
+      <div class="between">
+        <span style="font-weight:600;font-size:15px;">${j.name}</span>
+        <span class="pill">${j.matches.length} match${j.matches.length!==1?'es':''}</span>
+      </div>
+      <div class="meta">${j.id} &middot; Created ${new Date(j.created).toLocaleDateString()}</div>
+    </div>`).join('');
+}
+
+function openCreateJackpot() {
+  document.getElementById('create-jackpot-form').style.display = 'block';
+  document.getElementById('new-jackpot-name').focus();
+}
+function closeCreateJackpot() {
+  document.getElementById('create-jackpot-form').style.display = 'none';
+}
+
+function createJackpot() {
+  const name = document.getElementById('new-jackpot-name').value.trim();
+  if (!name) return;
+  const id = 'JP-' + (Date.now() % 100000);
+  jackpots.push({ id, name, matches: [], created: new Date().toISOString() });
+  save();
+  document.getElementById('new-jackpot-name').value = '';
+  closeCreateJackpot();
+  renderJackpots();
+}
+
+function openJackpotDetail(i) {
+  const j = jackpots[i];
+  document.getElementById('detail-title').textContent = j.name;
+  document.getElementById('detail-count').textContent = j.matches.length + ' match' + (j.matches.length!==1?'es':'');
+  const el = document.getElementById('jackpot-matches');
+  if (!j.matches.length) {
+    el.innerHTML = '<div class="empty">No matches yet.</div>';
+  } else {
+    el.innerHTML = j.matches.map((m, mi) => `
+      <div class="match-row">
+        <div>
+          <div class="teams">${m.home} vs ${m.away}</div>
+          <div class="meta">${m.league} &middot; ${m.date}</div>
+        </div>
+        <div class="flex">
+          ${m.status==='FT' ? '<span class="badge badge-green">FT '+m.score+'</span>' : '<span class="badge badge-gray">'+m.status+'</span>'}
+          <button class="btn btn-danger btn-sm" onclick="removeMatch(${i},${mi});event.stopPropagation()">Remove</button>
+        </div>
+      </div>`).join('');
+  }
+  document.getElementById('jackpot-list').style.display = 'none';
+  document.getElementById('jackpot-detail').style.display = 'block';
+}
+
+function closeJackpotDetail() {
+  document.getElementById('jackpot-detail').style.display = 'none';
+  document.getElementById('jackpot-list').style.display = 'block';
+}
+
+function removeMatch(ji, mi) {
+  jackpots[ji].matches.splice(mi, 1);
+  save();
+  openJackpotDetail(ji);
+}
+
+function populateJackpotSelect() {
+  const sel = document.getElementById('jackpot-select');
+  if (!jackpots.length) { sel.innerHTML = '<option>No jackpots — create one first</option>'; return; }
+  sel.innerHTML = jackpots.map((j,i) => `<option value="${i}">${j.name} (${j.id})</option>`).join('');
+}
+
+async function searchFixtures() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+  const date = document.getElementById('search-date').value;
+  const status = document.getElementById('search-status');
+  const results = document.getElementById('search-results');
+  document.getElementById('save-panel').style.display = 'none';
+  status.innerHTML = '<span class="spinner"></span> Searching teams...';
+  results.innerHTML = '';
+
+  try {
+    const teamData = await apiFetch('teams', { search: q });
+    if (!teamData.response || !teamData.response.length) {
+      status.innerHTML = '<span class="msg-error">No teams found for "' + q + '".</span>';
+      return;
+    }
+    const team = teamData.response[0].team;
+    status.innerHTML = '<span class="spinner"></span> Found ' + team.name + ', fetching fixtures...';
+    const season = new Date().getFullYear();
+    const params = date ? { team: team.id, date } : { team: team.id, season, next: 10 };
+    const fixData = await apiFetch('fixtures', params);
+    status.innerHTML = '';
+    if (!fixData.response || !fixData.response.length) {
+      status.innerHTML = '<span style="color:#888;font-size:14px;">No fixtures found for <strong>' + team.name + '</strong>.</span>';
+      return;
+    }
+    status.innerHTML = `<div style="font-size:13px;color:#555;margin-bottom:10px;">Showing fixtures for <strong>${team.name}</strong> — tap to select</div>`;
+    window._fixtures = fixData.response;
+    results.innerHTML = fixData.response.map((f, i) => {
+      const fix = f.fixture;
+      const dt = new Date(fix.date).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const score = f.goals.home !== null ? f.goals.home + ' - ' + f.goals.away : '';
+      return `<div class="card" onclick="selectFixture(${i}, this)">
+        <div class="between">
+          <div class="teams">${f.teams.home.name} vs ${f.teams.away.name}</div>
+          ${score ? '<span class="badge badge-green">'+score+'</span>' : '<span class="badge badge-gray">'+fix.status.short+'</span>'}
+        </div>
+        <div class="meta">${f.league.name} &middot; ${dt}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    status.innerHTML = '<span class="msg-error">Error: ' + e.message + '</span>';
+  }
+}
+
+function selectFixture(i, el) {
+  document.querySelectorAll('#search-results .card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  const f = window._fixtures[i];
+  selectedFixture = {
+    fixtureId: f.fixture.id,
+    home: f.teams.home.name,
+    away: f.teams.away.name,
+    league: f.league.name,
+    date: new Date(f.fixture.date).toISOString().split('T')[0],
+    status: f.fixture.status.short,
+    score: f.goals.home !== null ? f.goals.home + '-' + f.goals.away : ''
+  };
+  document.getElementById('selected-fixture-info').innerHTML =
+    `<div class="card card-static">
+      <div class="teams">${selectedFixture.home} vs ${selectedFixture.away}</div>
+      <div class="meta">${selectedFixture.league} &middot; ${selectedFixture.date}</div>
+    </div>`;
+  populateJackpotSelect();
+  document.getElementById('save-panel').style.display = 'block';
+  document.getElementById('save-msg').innerHTML = '';
+}
+
+function closeSavePanel() {
+  document.getElementById('save-panel').style.display = 'none';
+  selectedFixture = null;
+}
+
+function saveToJackpot() {
+  if (!selectedFixture) return;
+  const idx = parseInt(document.getElementById('jackpot-select').value);
+  if (isNaN(idx)) return;
+  jackpots[idx].matches.push(selectedFixture);
+  save();
+  document.getElementById('save-msg').innerHTML = '<div class="msg-success">✓ Saved to ' + jackpots[idx].name + '</div>';
+  selectedFixture = null;
+  setTimeout(() => {
+    closeSavePanel();
+    document.getElementById('save-msg').innerHTML = '';
+  }, 1500);
+}
+
+renderJackpots();
+</script>
+</body>
+</html>
