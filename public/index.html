@@ -37,9 +37,10 @@ input:focus, select:focus { outline: none; border-color: #1a56db; box-shadow: 0 
 .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #e8f0fe; color: #1a56db; }
 .badge-green { background: #dcfce7; color: #16a34a; }
 .badge-gray { background: #f3f4f6; color: #555; }
+.badge-live { background: #fef3c7; color: #d97706; }
 .row { display: flex; gap: 8px; align-items: center; }
 .flex { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.between { display: flex; align-items: center; justify-content: space-between; }
+.between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .divider { border: none; border-top: 1px solid #e5e5e5; margin: 16px 0; }
 .empty { text-align: center; padding: 40px 20px; color: #aaa; font-size: 14px; }
 .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #e5e5e5; border-top-color: #1a56db; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
@@ -50,8 +51,8 @@ input:focus, select:focus { outline: none; border-color: #1a56db; box-shadow: 0 
 .match-row:last-child { border-bottom: none; }
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .pill { font-size: 12px; background: #f3f4f6; border-radius: 99px; padding: 2px 10px; color: #555; }
-.competition-group { margin-bottom: 20px; }
-.competition-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding: 0 2px; }
+.league-group { margin-bottom: 18px; }
+.league-title { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; padding: 0 2px; }
 </style>
 </head>
 <body>
@@ -96,33 +97,17 @@ input:focus, select:focus { outline: none; border-color: #1a56db; box-shadow: 0 
 
 <div class="screen" id="tab-search">
   <h2>Find a Fixture</h2>
-
   <div style="margin-bottom:16px;">
-    <div class="label">Competition</div>
-    <select id="competition-select" style="margin-bottom:12px;">
-      <option value="">-- Select a competition --</option>
-      <option value="CL">UEFA Champions League</option>
-      <option value="PL">Premier League</option>
-      <option value="PD">La Liga</option>
-      <option value="SA">Serie A</option>
-      <option value="BL1">Bundesliga</option>
-      <option value="FL1">Ligue 1</option>
-      <option value="PPL">Primeira Liga</option>
-      <option value="DED">Eredivisie</option>
-      <option value="BSA">Brasileirão</option>
-      <option value="ELC">Championship</option>
-    </select>
     <div class="label">Date</div>
-    <div class="row" style="margin-bottom:4px;">
+    <div class="row">
       <input type="date" id="search-date" style="max-width:200px;" />
       <button class="btn btn-primary" onclick="searchFixtures()">Search</button>
+      <button class="btn btn-ghost" onclick="setToday()">Today</button>
     </div>
-    <div style="font-size:12px;color:#aaa;margin-top:4px;">Leave date empty to see all upcoming fixtures in this competition</div>
+    <div style="font-size:12px;color:#aaa;margin-top:6px;">All matches on the selected date across all leagues</div>
   </div>
-
   <div id="search-status"></div>
   <div id="search-results"></div>
-
   <div id="save-panel" style="display:none; margin-top:16px;">
     <hr class="divider">
     <h2>Save to Jackpot</h2>
@@ -144,13 +129,17 @@ let selectedFixture = null;
 
 function save() { localStorage.setItem('ejf_jackpots', JSON.stringify(jackpots)); }
 
+function setToday() {
+  document.getElementById('search-date').value = new Date().toISOString().split('T')[0];
+}
+
 async function apiFetch(path, params) {
   const q = new URLSearchParams(params).toString();
   const url = `${PROXY}/api/${path}${q ? '?' + q : ''}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Server error: ' + res.status);
   const data = await res.json();
-  if (data.errorCode) throw new Error(data.message);
+  if (data.errors && Object.keys(data.errors).length) throw new Error(Object.values(data.errors)[0]);
   return data;
 }
 
@@ -160,7 +149,7 @@ function showTab(tab, btn) {
   document.getElementById('tab-' + tab).classList.add('active');
   if (btn) btn.classList.add('active');
   if (tab === 'jackpots') renderJackpots();
-  if (tab === 'search') populateJackpotSelect();
+  if (tab === 'search') { populateJackpotSelect(); setToday(); }
 }
 
 function renderJackpots() {
@@ -209,10 +198,10 @@ function openJackpotDetail(i) {
       <div class="match-row">
         <div>
           <div class="teams">${m.home} vs ${m.away}</div>
-          <div class="meta">${m.competition} · ${m.date}</div>
+          <div class="meta">${m.league} · ${m.date}</div>
         </div>
         <div class="flex">
-          ${m.status==='FINISHED' ? '<span class="badge badge-green">FT '+m.score+'</span>' : '<span class="badge badge-gray">'+m.status+'</span>'}
+          ${m.status==='FT' ? '<span class="badge badge-green">FT '+m.score+'</span>' : '<span class="badge badge-gray">'+m.status+'</span>'}
           <button class="btn btn-danger btn-sm" onclick="removeMatch(${i},${mi});event.stopPropagation()">Remove</button>
         </div>
       </div>`).join('');
@@ -239,53 +228,60 @@ function populateJackpotSelect() {
 }
 
 async function searchFixtures() {
-  const competition = document.getElementById('competition-select').value;
   const date = document.getElementById('search-date').value;
-  if (!competition) {
-    document.getElementById('search-status').innerHTML = '<span class="msg-error">Please select a competition first.</span>';
+  if (!date) {
+    document.getElementById('search-status').innerHTML = '<span class="msg-error">Please select a date.</span>';
     return;
   }
   const status = document.getElementById('search-status');
   const results = document.getElementById('search-results');
   document.getElementById('save-panel').style.display = 'none';
-  status.innerHTML = '<span class="spinner"></span> Fetching fixtures...';
+  status.innerHTML = '<span class="spinner"></span> Fetching all matches for ' + date + '...';
   results.innerHTML = '';
 
   try {
-    const params = {};
-    if (date) { params.dateFrom = date; params.dateTo = date; }
-    else { 
-      const today = new Date().toISOString().split('T')[0];
-      const future = new Date(Date.now() + 14*24*60*60*1000).toISOString().split('T')[0];
-      params.dateFrom = today;
-      params.dateTo = future;
-    }
-    const data = await apiFetch(`competitions/${competition}/matches`, params);
+    const data = await apiFetch('fixtures', { date });
     status.innerHTML = '';
-    if (!data.matches || !data.matches.length) {
-      status.innerHTML = '<span style="color:#888;font-size:14px;">No fixtures found for this selection.</span>';
+    if (!data.response || !data.response.length) {
+      status.innerHTML = '<span style="color:#888;font-size:14px;">No matches found for this date.</span>';
       return;
     }
-    window._fixtures = data.matches;
-    status.innerHTML = `<div style="font-size:13px;color:#555;margin-bottom:10px;">Found ${data.matches.length} fixture${data.matches.length!==1?'s':''} — tap to select</div>`;
-    results.innerHTML = data.matches.map((f, i) => {
-      const dt = new Date(f.utcDate).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-      const home = f.homeTeam.shortName || f.homeTeam.name;
-      const away = f.awayTeam.shortName || f.awayTeam.name;
-      const score = f.status === 'FINISHED' ? (f.score.fullTime.home + ' - ' + f.score.fullTime.away) : '';
-      const statusBadge = f.status === 'FINISHED'
-        ? `<span class="badge badge-green">FT ${score}</span>`
-        : f.status === 'IN_PLAY' || f.status === 'PAUSED'
-        ? `<span class="badge" style="background:#fef3c7;color:#d97706;">LIVE</span>`
-        : `<span class="badge badge-gray">${f.status}</span>`;
-      return `<div class="card" onclick="selectFixture(${i}, this)">
-        <div class="between">
-          <div class="teams">${home} vs ${away}</div>
-          ${statusBadge}
-        </div>
-        <div class="meta">${f.competition.name} · ${dt}</div>
-      </div>`;
-    }).join('');
+
+    window._fixtures = data.response;
+
+    // group by league
+    const groups = {};
+    data.response.forEach((f, i) => {
+      const key = f.league.name;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push({ f, i });
+    });
+
+    status.innerHTML = `<div style="font-size:13px;color:#555;margin-bottom:12px;">Found <strong>${data.response.length}</strong> matches — tap to select</div>`;
+
+    results.innerHTML = Object.entries(groups).map(([league, matches]) => `
+      <div class="league-group">
+        <div class="league-title">${league}</div>
+        ${matches.map(({ f, i }) => {
+          const dt = new Date(f.fixture.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          const score = f.goals.home !== null ? f.goals.home + ' - ' + f.goals.away : dt;
+          const st = f.fixture.status.short;
+          const isLive = st === '1H' || st === '2H' || st === 'HT';
+          const isFinished = st === 'FT';
+          const badgeHtml = isFinished
+            ? `<span class="badge badge-green">FT ${f.goals.home}-${f.goals.away}</span>`
+            : isLive
+            ? `<span class="badge badge-live">LIVE ${f.fixture.status.elapsed}'</span>`
+            : `<span class="badge badge-gray">${dt}</span>`;
+          return `<div class="card" onclick="selectFixture(${i}, this)">
+            <div class="between">
+              <div class="teams">${f.teams.home.name} vs ${f.teams.away.name}</div>
+              ${badgeHtml}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+
   } catch(e) {
     status.innerHTML = '<span class="msg-error">Error: ' + e.message + '</span>';
   }
@@ -295,22 +291,20 @@ function selectFixture(i, el) {
   document.querySelectorAll('#search-results .card').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
   const f = window._fixtures[i];
-  const home = f.homeTeam.shortName || f.homeTeam.name;
-  const away = f.awayTeam.shortName || f.awayTeam.name;
-  const score = f.status === 'FINISHED' ? (f.score.fullTime.home + '-' + f.score.fullTime.away) : '';
+  const score = f.goals.home !== null ? f.goals.home + '-' + f.goals.away : '';
   selectedFixture = {
-    fixtureId: f.id,
-    home,
-    away,
-    competition: f.competition.name,
-    date: new Date(f.utcDate).toISOString().split('T')[0],
-    status: f.status,
+    fixtureId: f.fixture.id,
+    home: f.teams.home.name,
+    away: f.teams.away.name,
+    league: f.league.name,
+    date: new Date(f.fixture.date).toISOString().split('T')[0],
+    status: f.fixture.status.short === 'FT' ? 'FT' : f.fixture.status.short,
     score
   };
   document.getElementById('selected-fixture-info').innerHTML =
     `<div class="card card-static">
-      <div class="teams">${home} vs ${away}</div>
-      <div class="meta">${f.competition.name} · ${selectedFixture.date}</div>
+      <div class="teams">${selectedFixture.home} vs ${selectedFixture.away}</div>
+      <div class="meta">${selectedFixture.league} · ${selectedFixture.date}</div>
     </div>`;
   populateJackpotSelect();
   document.getElementById('save-panel').style.display = 'block';
@@ -334,6 +328,7 @@ function saveToJackpot() {
 }
 
 renderJackpots();
+setToday();
 </script>
 </body>
 </html>
